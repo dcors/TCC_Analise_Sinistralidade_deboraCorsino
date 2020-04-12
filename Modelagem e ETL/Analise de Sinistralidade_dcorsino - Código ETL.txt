@@ -1,0 +1,92 @@
+﻿//TRANSFORM FILE\\
+let
+    Source = Csv.Document(Parameter1,[Delimiter=";", Columns=35, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true])
+in
+    #"Promoted Headers"
+	
+
+//REGIONAL\\	
+let
+    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("fZHBrsIgEEV/hXTtT9SqzTMPJeDOuBgt0UlaxtB249e/EagpNXmrppw7l3uH87koq2JVHMgPlr/lzdvisuLT33ja2D6CFu4EfWRyPtHBi9xEVE6eEI7XZW62hgdGUm1zUlnwkWx24dcNnsQx0Q32g8eBxM421kMbhFvDxIyTw7Z/YtAYcAMFRX38tqoJU2a5CCc5gXtAHJV1Zi6Rm4qa78Y0bL6tJfDttae+J9FwjjHmlKd/pUGjytn+1LQKtc4TvgFeE1ssUFnvoLuOt2T4s8AII0aiQ7M2+blop/dZX41cwYo9OIs+OupD7viW1DzPMi4bswfdcVZFk2vIpTfXOiPcpUvAfCLlrtMKTfURvF8XRAUDeEzZzWIVxvo7PmMao7JeBkgoGNtY6TSPeqIbW6Pj9738AQ==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type text) meta [Serialized.Text = true]) in type table [UF = _t, #"Região BR" = _t, UF_Name = _t]),
+    #"Changed Type" = Table.TransformColumnTypes(Source,{{"UF", type text}, {"Região BR", type text}, {"UF_Name", type text}})
+in
+    #"Changed Type"
+	
+//D_CALENDARIO\\
+let
+    Ano_Inicial = #date(Ano_Inicial,1,1),
+    Ano_Final = #date(Ano_Final,12,31),
+    NumberOfDays = Duration.Days( Ano_Final - Ano_Inicial ),
+    Dates = List.Dates(Ano_Inicial, NumberOfDays+1, #duration(1,0,0,0)),
+    #"Converted to Table" = Table.FromList(Dates, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Renamed Columns" = Table.RenameColumns(#"Converted to Table",{{"Column1", "FullDateAlternateKey"}}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns",{{"FullDateAlternateKey", type date}}),
+    #"Added Custom" = Table.AddColumn(#"Changed Type", "Year", each Date.Year([FullDateAlternateKey])),
+    #"Inserted Month" = Table.AddColumn(#"Added Custom", "Month", each Date.Month([FullDateAlternateKey]), type number),
+    #"Inserted Month Name" = Table.AddColumn(#"Inserted Month", "Month Name", each Date.MonthName([FullDateAlternateKey]), type text),
+    #"Inserted Quarter" = Table.AddColumn(#"Inserted Month Name", "Quarter", each Date.QuarterOfYear([FullDateAlternateKey]), type number),
+    #"Inserted Week of Year" = Table.AddColumn(#"Inserted Quarter", "Week of Year", each Date.WeekOfYear([FullDateAlternateKey]), type number),
+    #"Inserted Week of Month" = Table.AddColumn(#"Inserted Week of Year", "Week of Month", each Date.WeekOfMonth([FullDateAlternateKey]), type number),
+    #"Inserted Day" = Table.AddColumn(#"Inserted Week of Month", "Day", each Date.Day([FullDateAlternateKey]), type number),
+    #"Inserted Day of Week" = Table.AddColumn(#"Inserted Day", "Day of Week", each Date.DayOfWeek([FullDateAlternateKey]), type number),
+    #"Inserted Day of Year" = Table.AddColumn(#"Inserted Day of Week", "Day of Year", each Date.DayOfYear([FullDateAlternateKey]), type number),
+    #"Inserted Day Name" = Table.AddColumn(#"Inserted Day of Year", "Day Name", each Date.DayOfWeekName([FullDateAlternateKey]), type text),
+    #"Colunas Renomeadas" = Table.RenameColumns(#"Inserted Day Name",{{"FullDateAlternateKey", "Data"}, {"Year", "Ano"}, {"Month", "Mês_Num"}, {"Month Name", "Mês_Nome"}, {"Quarter", "Trimestre"}, {"Week of Year", "Semana"}, {"Week of Month", "Semana do Mês"}, {"Day", "Dia"}, {"Day of Week", "Dia da Semana"}, {"Day of Year", "Dias do Ano"}, {"Day Name", "Dia Nome"}}),
+    #"Personalização Adicionada" = Table.AddColumn(#"Colunas Renomeadas", "Mês_Nom_Resumido", each Date.ToText([Data],"MMM")),
+    #"Colunas Reordenadas" = Table.ReorderColumns(#"Personalização Adicionada",{"Data", "Ano", "Mês_Num", "Mês_Nome", "Mês_Nom_Resumido", "Trimestre", "Semana", "Semana do Mês", "Dia", "Dia da Semana", "Dias do Ano", "Dia Nome"}),
+    #"Coluna Mesclada Inserida" = Table.AddColumn(#"Colunas Reordenadas", "Mês_Ano", each Text.Combine({[Mês_Nom_Resumido], Text.From([Ano], "pt-BR")}, "-"), type text),
+    #"Colunas Reordenadas1" = Table.ReorderColumns(#"Coluna Mesclada Inserida",{"Data", "Ano", "Mês_Num", "Mês_Nome", "Mês_Nom_Resumido", "Mês_Ano", "Trimestre", "Semana", "Semana do Mês", "Dia", "Dia da Semana", "Dias do Ano", "Dia Nome"}),
+    #"Primeiros Caracteres Inseridos" = Table.AddColumn(#"Colunas Reordenadas1", "Primeiros caracteres", each Text.Start([Dia Nome], 3), type text),
+    #"Colunas Renomeadas1" = Table.RenameColumns(#"Primeiros Caracteres Inseridos",{{"Dia Nome", "Dia Semana Nome"}, {"Primeiros caracteres", "Dia Semana Nome Resumido"}, {"Data", "Date"}}),
+    HOJE = Table.AddColumn(#"Colunas Renomeadas1", "HOJE", each DateTime.LocalNow ()),
+    #"Tipo Alterado" = Table.TransformColumnTypes(HOJE,{{"HOJE", type date}}),
+    #"FILTRO DA DATA" = Table.AddColumn(#"Tipo Alterado", "FILTRO DATA", each if [Date] <= [HOJE] then 1 else 0),
+    #"FILTRAR DATA" = Table.SelectRows(#"FILTRO DA DATA", each ([FILTRO DATA] = 1)),
+    #"NOME DATA" = Table.RenameColumns(#"FILTRAR DATA",{{"Date", "Data"}}),
+    ORDEM_MES = Table.AddColumn(#"NOME DATA", "ORDEM_MES", each if [Mês_Num] = 1 then "A" else if [Mês_Num] = 2 then "B" else if [Mês_Num] = 3 then "C" else if [Mês_Num] = 4 then "D" else if [Mês_Num] = 5 then "E" else if [Mês_Num] = 6 then "F" else if [Mês_Num] = 7 then "G" else if [Mês_Num] = 8 then "H" else if [Mês_Num] = 9 then "I" else if [Mês_Num] = 10 then "J" else if [Mês_Num] = 11 then "K" else if [Mês_Num] = 12 then "L" else "M"),
+    #"TIPO ORDEM MES" = Table.TransformColumnTypes(ORDEM_MES,{{"ORDEM_MES", type text}}),
+    #"ORDEM MES ANO" = Table.AddColumn(#"TIPO ORDEM MES", "ORDEM_MES_ANO", each Text.Combine({Text.From([Ano], "pt-BR"), [ORDEM_MES]}, ""), type text)
+in
+    #"ORDEM MES ANO"
+
+
+//ACIDENTES AGRUPADOS POR PESSOAS\\
+let
+    Source = Folder.Files("C:\Users\Keyrus.DESKTOP-F3K19U7\Documents\TCC\acidentes agrupados por pessoa"),
+    #"Filtered Hidden Files1" = Table.SelectRows(Source, each [Attributes]?[Hidden]? <> true),
+    #"Invoke Custom Function1" = Table.AddColumn(#"Filtered Hidden Files1", "Transform File", each #"Transform File"([Content])),
+    #"Renamed Columns1" = Table.RenameColumns(#"Invoke Custom Function1", {"Name", "Source.Name"}),
+    #"Removed Other Columns1" = Table.SelectColumns(#"Renamed Columns1", {"Source.Name", "Transform File"}),
+    #"Expanded Table Column1" = Table.ExpandTableColumn(#"Removed Other Columns1", "Transform File", Table.ColumnNames(#"Transform File"(#"Sample File"))),
+    #"Changed Type" = Table.TransformColumnTypes(#"Expanded Table Column1",{{"Source.Name", type text}, {"id", Int64.Type}, {"pesid", type text}, {"data_inversa", type date}, {"dia_semana", type text}, {"horario", type time}, {"uf", type text},  {"municipio", type text}, {"causa_acidente", type text}, {"tipo_acidente", type text}, {"classificacao_acidente", type text}, {"fase_dia", type text}, {"sentido_via", type text}, {"condicao_metereologica", type text}, {"tipo_pista", type text}, {"tracado_via", type text}, {"uso_solo", type text}, {"id_veiculo", Int64.Type}, {"tipo_veiculo", type text}, {"marca", type text}, {"ano_fabricacao_veiculo", type text}, {"tipo_envolvido", type text}, {"estado_fisico", type text}, {"idade", type text}, {"sexo", type text}, {"ilesos", Int64.Type}, {"feridos_leves", Int64.Type}, {"feridos_graves", Int64.Type}, {"mortos", Int64.Type}, {"latitude", type number}, {"longitude", type number}, {"regional", type text}, {"delegacia", type text}, {"uop", type text}}),
+    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type", "data_inversa", "Ano"),
+    #"Extracted Year" = Table.TransformColumns(#"Duplicated Column",{{"Ano", Date.Year, Int64.Type}}),
+    #"Duplicated Column1" = Table.DuplicateColumn(#"Extracted Year", "data_inversa", "Mes"),
+    #"Extracted Month Name" = Table.TransformColumns(#"Duplicated Column1", {{"Mes", each Text.Proper (Date.MonthName(_)), type text}}),
+    #"Added Custom" = Table.AddColumn(#"Extracted Month Name", "idadeElect", each if [idade] = "NA" then 0 else [idade]),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Added Custom",{{"idadeElect", Int64.Type}}),
+    #"Added Custom1" = Table.AddColumn(#"Changed Type1", "Faiza Etaria", each if [idadeElect] >= 18 and [idadeElect] <= 25 then "18-25" else 
+if [idadeElect] >= 26 and [idadeElect] <= 35 then "26-35"
+else 
+if [idadeElect] >= 36 and [idadeElect] <= 45 then "36-45"
+else 
+if [idadeElect] >= 46 and [idadeElect] <= 55 then "46-55"
+else 
+if [idadeElect] >= 56 and [idadeElect] <= 99 then "56-99" 
+else "NA"),
+    #"Renamed Columns" = Table.RenameColumns(#"Added Custom1",{{"Faiza Etaria", "Faixa Etaria"}})
+in
+    #"Renamed Columns"
+
+
+//SUSEP\\
+let
+    Source = Table.Combine({#"susep - 2018", #"susep - 2019"}),
+    uf = Table.AddColumn(Source, "UF", each Text.Start([Região],2)),
+    #"tipo veiculo" = Table.AddColumn(uf, "tipo_veículo", each if Text.Contains([Categoria],"Motocicleta") then "Motocicleta" else 
+if Text.Contains([Categoria], "Passeio") or Text.Contains([Categoria], "Pick-up") then "Automóvel" else  "outros")
+in
+    #"tipo veiculo"
+	
+	
